@@ -1,0 +1,78 @@
+# A moderator's decision on a version waiting for review (11-catalog-distribution.md 5.1 step 6, 5.2): the label
+# `approved` or `rejected` on a "Review: <id> v<ver>" issue that build-index opened. Only people with triage rights
+# on this repo (the team `moderators`) can set labels. Behind the environment `catalog-admin` (required reviewers, review
+# F1; it holds its own copy of the key of the App): a re-run by anybody with actions:write waits for them too.
+# Only an issue the bot of the catalog opened counts (anybody can open an issue with a copy of the marker, and a
+# moderator may label it by mistake): its author must be the App, and its number the one state/ keeps for the version
+# (review --issue).
+name: review
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  decide:
+    if: >-
+      ${{ (github.event.label.name == 'approved' || github.event.label.name == 'rejected') &&
+          contains(github.event.issue.labels.*.name, 'review') }}
+    environment: catalog-admin
+    runs-on: ubuntu-latest
+    steps:
+      - name: App token
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.CATALOG_APP_ID }}
+          private-key: ${{ secrets.CATALOG_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          # only what this job needs (the App also has Administration for new-addon.yml)
+          permission-contents: write
+          permission-issues: write
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app.outputs.token }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - name: Apply
+        env:
+          BODY: ${{ github.event.issue.body }}
+          LABEL: ${{ github.event.label.name }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          BOT_NAME: ${{ vars.CATALOG_BOT_NAME || 'gw-catalog[bot]' }}
+          BOT_EMAIL: ${{ vars.CATALOG_BOT_EMAIL || 'gw-catalog-bot@users.noreply.github.com' }}
+          ISSUE: ${{ github.event.issue.number }}
+          AUTHOR: ${{ github.event.issue.user.login }}
+          BOT: ${{ steps.app.outputs.app-slug }}[bot]
+        run: |
+          if [ "$AUTHOR" != "$BOT" ]; then
+            echo "::error::the issue is opened by $AUTHOR, not by the bot of the catalog ($BOT): not a review issue"
+            exit 1
+          fi
+          # without pipefail a failed review (python | tee) would still be committed as "nothing to commit", commented
+          # as done and the issue closed
+          set -o pipefail
+          marker=$(printf '%s' "$BODY" | grep -oE '<!-- gw-review [a-z0-9_]{1,64} [0-9]+\.[0-9]+\.[0-9]+ -->' | head -n1 || true)
+          if [ -z "$marker" ]; then echo "::error::no gw-review marker in the issue"; exit 1; fi
+          id=$(echo "$marker" | awk '{print $3}')
+          ver=$(echo "$marker" | awk '{print $4}')
+          decision=--approve; [ "$LABEL" = rejected ] && decision=--reject
+          # The state may move under us (build-index): redo the offline step on the newest commit until the push wins
+          for attempt in 1 2 3 4 5; do
+            git fetch -q origin "${{ github.event.repository.default_branch }}"
+            git reset -q --hard "origin/${{ github.event.repository.default_branch }}"
+            python tools/validator/gw_catalog.py review --index . --id "$id" --version "$ver" --issue "$ISSUE" $decision | tee "$RUNNER_TEMP/out.txt"
+            if bash ci/commit.sh "index: review $id $ver ($LABEL)" index.json state history; then break; fi
+            [ "$attempt" = 5 ] && exit 1
+          done
+          gh issue comment "$ISSUE" --body "$(cat "$RUNNER_TEMP/out.txt") - index.json is updated."
+          gh issue close "$ISSUE"

@@ -1,0 +1,154 @@
+# "New addon" requests (11-catalog-distribution.md 5.1): the bot checks the form on open / edit; a moderator's label
+# `approved` makes the bot create the repo <id> from the template, fill addon.ltx and catalog/catalog.ltx from the
+# form, invite the maintainer with the role `maintain` and close the issue.
+#
+# Two jobs. `check` holds no secret (GITHUB_TOKEN: comments and labels of this repo). `create` holds the App with
+# Administration and runs behind the environment `catalog-admin` (required reviewers, review F1). An edit of the form
+# after `approved` removes the label (review F11); `create` locks the issue, reads its body again and refuses when it is
+# not the body the label was put on; its comment names the repo and the login it used.
+name: new-addon
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: new-addon-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: >-
+      ${{ contains(github.event.issue.labels.*.name, 'new-addon') && github.event.issue.state == 'open' &&
+          (github.event.action != 'labeled' || github.event.label.name == 'approved') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      ok: ${{ steps.check.outputs.ok }}
+    env:
+      ORG: ${{ github.repository_owner }}
+      ISSUE: ${{ github.event.issue.number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository_owner }}/template
+          path: template-repo
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      # An edit after the approval: the approval was of another text
+      - name: Edit after the approval
+        if: ${{ github.event.action == 'edited' && contains(github.event.issue.labels.*.name, 'approved') }}
+        run: |
+          gh issue edit "$ISSUE" --repo "${{ github.repository }}" --remove-label approved
+          gh issue comment "$ISSUE" --repo "${{ github.repository }}" --body \
+            "The request was edited after the approval: the label \`approved\` is removed. A moderator checks it again."
+      - name: Check the request
+        id: check
+        env:
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          printf '%s' "$BODY" > "$RUNNER_TEMP/body.md"
+          existing=$(gh repo list "$ORG" --limit 4000 --json name --jq '.[].name' | paste -sd, -)
+          set +e
+          python tools/validator/gw_catalog.py new-addon-check --index . --body-file "$RUNNER_TEMP/body.md" \
+            --existing "$existing" --template template-repo > "$RUNNER_TEMP/check.json"
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/check.json"
+          echo "ok=$([ $code = 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Answer
+        if: ${{ github.event.action != 'labeled' || steps.check.outputs.ok != 'true' }}
+        run: gh issue comment "$ISSUE" --repo "${{ github.repository }}" --body "$(jq -r .comment "$RUNNER_TEMP/check.json")"
+
+  create:
+    needs: check
+    if: >-
+      ${{ github.event.action == 'labeled' && needs.check.outputs.ok == 'true' }}
+    environment: catalog-admin
+    runs-on: ubuntu-latest
+    env:
+      ORG: ${{ github.repository_owner }}
+      ISSUE: ${{ github.event.issue.number }}
+    steps:
+      # administration:write (create repos) and members / collaborators on the organization
+      - name: App token
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.CATALOG_APP_ID }}
+          private-key: ${{ secrets.CATALOG_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository_owner }}/template
+          path: template-repo
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      # The body of now (the run may wait for the approval of the environment) must be the body the label was put on;
+      # locked first, so it cannot change while the repo is created
+      - name: Lock and check the request again
+        id: check
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          gh issue lock "$ISSUE" --repo "${{ github.repository }}" --reason resolved || true
+          gh api "repos/${{ github.repository }}/issues/$ISSUE" --jq .body > "$RUNNER_TEMP/body_now.md"
+          printf '%s' "$BODY" > "$RUNNER_TEMP/body.md"
+          labels=$(gh api "repos/${{ github.repository }}/issues/$ISSUE" --jq '[.labels[].name] | join(",")')
+          if ! cmp -s <(printf '%s' "$(cat "$RUNNER_TEMP/body.md")") <(printf '%s' "$(cat "$RUNNER_TEMP/body_now.md")") ||
+             ! printf ',%s,' "$labels" | grep -q ',approved,'; then
+            gh issue unlock "$ISSUE" --repo "${{ github.repository }}" || true
+            gh issue edit "$ISSUE" --repo "${{ github.repository }}" --remove-label approved || true
+            gh issue comment "$ISSUE" --repo "${{ github.repository }}" --body \
+              "The request changed after the approval (or the label was removed): nothing is created. A moderator approves it again."
+            exit 1
+          fi
+          existing=$(gh repo list "$ORG" --limit 4000 --json name --jq '.[].name' | paste -sd, -)
+          python tools/validator/gw_catalog.py new-addon-check --index . --body-file "$RUNNER_TEMP/body.md" \
+            --existing "$existing" --template template-repo > "$RUNNER_TEMP/check.json"
+          # the fields go to the outputs only when the validator accepted them: an unchecked value with a line break
+          # ("x\nok=true") would add outputs of its own
+          echo "id=$(jq -r '.fields.addon_id // ""' "$RUNNER_TEMP/check.json")" >> "$GITHUB_OUTPUT"
+          echo "maintainer=$(jq -r '(.fields.maintainer // "") | ltrimstr("@")' "$RUNNER_TEMP/check.json")" >> "$GITHUB_OUTPUT"
+      - name: Create the repo
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          ID: ${{ steps.check.outputs.id }}
+          MAINTAINER: ${{ steps.check.outputs.maintainer }}
+        run: |
+          gh repo create "$ORG/$ID" --public --template "$ORG/template" \
+            --description "$(jq -r '.fields.name' "$RUNNER_TEMP/check.json")"
+          # The repo is generated from the template asynchronously: wait for addon.ltx
+          for i in $(seq 1 30); do
+            gh api "repos/$ORG/$ID/contents/addon.ltx" --jq .sha > /dev/null 2>&1 && break
+            sleep 2
+          done
+          for path in addon.ltx catalog/catalog.ltx; do
+            sha=$(gh api "repos/$ORG/$ID/contents/$path" --jq .sha)
+            jq -r --arg p "$path" '.files[$p]' "$RUNNER_TEMP/check.json" | base64 -w0 > "$RUNNER_TEMP/content.b64"
+            gh api -X PUT "repos/$ORG/$ID/contents/$path" -f message="Fill $path from the request #$ISSUE" \
+              -f sha="$sha" -F content=@"$RUNNER_TEMP/content.b64" > /dev/null
+          done
+          gh api -X PUT "repos/$ORG/$ID/collaborators/$MAINTAINER" -f permission=maintain > /dev/null
+          gh issue unlock "$ISSUE" --repo "${{ github.repository }}" || true
+          gh issue comment "$ISSUE" --repo "${{ github.repository }}" --body \
+            "Created https://github.com/$ORG/$ID (id \`$ID\`) and invited @$MAINTAINER (login \`$MAINTAINER\`) with the role maintain. Next: fill catalog/, then publish a release v<version> with $ID-<version>.zip (see the README of the repo)."
+          gh issue close "$ISSUE" --repo "${{ github.repository }}"
+          gh issue lock "$ISSUE" --repo "${{ github.repository }}" --reason resolved || true

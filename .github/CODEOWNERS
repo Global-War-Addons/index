@@ -1,0 +1,14 @@
+# Code owners of the index repo (review 2026-11-06 F/O7, decision 63). A pull request that touches these paths needs an
+# approval of the team before it can be merged: the workflows, the validator and the CI scripts decide what is
+# published and hold the key of the catalog App. Works only together with the branch protection of the default branch
+# ("Require review from Code Owners", catalog/README.md "What to create on GitHub"), and the team needs write access
+# to this repo for its approvals to count. A third-party catalog replaces the team with its own.
+/.github/            @Global-War-Addons/moderators
+/tools/              @Global-War-Addons/moderators
+/ci/                 @Global-War-Addons/moderators
+# The configuration the CI trusts (the source, the moderation decisions, the game releases and their snapshot hashes)
+/source.ltx          @Global-War-Addons/moderators
+/moderation.ltx      @Global-War-Addons/moderators
+/game_releases.ltx   @Global-War-Addons/moderators
+/reserved_ids.ltx    @Global-War-Addons/moderators
+/tags.ltx            @Global-War-Addons/moderators

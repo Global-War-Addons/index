@@ -1,0 +1,74 @@
+# "New addon" request (11-catalog-distribution.md 5.1). The labels are parsed by gwcat/newaddon.py FIELDS:
+# change them together.
+name: New addon / Новый аддон
+description: Ask for a repo for your addon in the catalog / Заявка на репозиторий аддона в каталоге
+title: "New addon: "
+labels: ["new-addon"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The bot checks the request and answers here. A moderator approves it with the label `approved`, then the bot
+        creates the repo from the template and invites the maintainer with the role `maintain`.
+        Бот проверит заявку и ответит здесь. После одобрения модератором бот создаст репо из шаблона и пригласит
+        мейнтейнера.
+  - type: input
+    id: addon_id
+    attributes:
+      label: Addon id / id аддона
+      description: "a-z 0-9 _, up to 64 characters; also the name of the repo. Ids gw_* are reserved."
+      placeholder: vector_weapons
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type / тип
+      options: [content, graphics, audio, script, ui, localization, library, location]
+    validations:
+      required: true
+  - type: input
+    id: name
+    attributes:
+      label: Name / название
+    validations:
+      required: true
+  - type: input
+    id: summary
+    attributes:
+      label: Summary / кратко
+      description: One line for the list of the catalog / одна строка для списка
+  - type: input
+    id: source
+    attributes:
+      label: Source or page / исходники или страница
+      placeholder: https://...
+  - type: input
+    id: license
+    attributes:
+      label: License / лицензия
+      description: SPDX id (MIT, CC-BY-4.0 ...) or custom; empty - CC-BY-NC-4.0
+  - type: input
+    id: authors
+    attributes:
+      label: Authors / авторы
+      description: Authors of the original, through commas / авторы оригинала через запятую
+  - type: input
+    id: permission
+    attributes:
+      label: Permission link / ссылка на разрешение
+      description: Required when you are not the author and the license does not allow redistribution
+  - type: input
+    id: maintainer
+    attributes:
+      label: Maintainer GitHub login / логин мейнтейнера
+      placeholder: ivan-petrov
+    validations:
+      required: true
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Rules / правила
+      options:
+        - label: The addon follows the rules of the catalog (no 18+ content, no malware) / Аддон соответствует правилам каталога
+          required: true

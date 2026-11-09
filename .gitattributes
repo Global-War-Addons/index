@@ -1,0 +1,7 @@
+# The bytes of the published JSON are hashed (merge sha256, history/<id>.<hash8>.json): never convert them
+* text=auto eol=lf
+*.json -text
+files/** -text
+history/** -text
+*.zip binary
+*.png binary

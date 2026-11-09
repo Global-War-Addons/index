@@ -1,0 +1,30 @@
+# A complaint about an addon (11-catalog-distribution.md 5.3): a moderator decides on blocked / revoked / yanked
+# in moderation.ltx.
+name: Report an addon / Жалоба
+description: Malware, stolen content, broken versions, rules / Вредонос, чужой контент, сломанные версии, правила
+title: "Report: "
+labels: ["report"]
+body:
+  - type: input
+    id: addon_id
+    attributes:
+      label: Addon id / id аддона
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version (empty - all) / версия
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What / что
+      options: [malware, stolen content, broken version, rules of the catalog, other]
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details / подробности
+    validations:
+      required: true

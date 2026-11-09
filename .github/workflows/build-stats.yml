@@ -1,0 +1,54 @@
+# stats.json: downloads and stars of the addons of index.json (11-catalog-distribution.md 4.4). Separate from
+# index.json, so that index.json changes only with real changes of the catalog.
+#
+# In the environment `catalog-publish` (it holds the key of the App; no reviewers: it runs on a schedule, every run
+# would wait for an approval; deployment branches: the default branch only). Runs only the code of this repo and writes
+# only stats.json. The public numbers are read with GITHUB_TOKEN; the App token only pushes, to this repo only.
+name: build-stats
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: build-stats
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  stats:
+    environment: catalog-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Repo name
+        id: repo
+        run: echo "name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
+      - name: App token
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.CATALOG_APP_ID }}
+          private-key: ${{ secrets.CATALOG_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ steps.repo.outputs.name }}
+          permission-contents: write
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app.outputs.token }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - name: stats.json
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python tools/validator/gw_catalog.py stats --index .
+      - name: Commit
+        env:
+          BOT_NAME: ${{ vars.CATALOG_BOT_NAME || 'gw-catalog[bot]' }}
+          BOT_EMAIL: ${{ vars.CATALOG_BOT_EMAIL || 'gw-catalog-bot@users.noreply.github.com' }}
+        run: |
+          bash ci/commit.sh "index: stats $(date -u +%Y-%m-%dT%H:%MZ)" stats.json

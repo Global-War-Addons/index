@@ -1,0 +1,65 @@
+# Pull requests to the index (moderation.ltx, tags.ltx, reserved_ids.ltx, game_releases.ltx, tools/ ...):
+# the whole repo must stay consistent, published files (files/, history/) immutable, generated files untouched
+# (only the CI of the index writes index.json, stats.json, state/, files/, history/).
+#
+# The check runs the validator of the BASE branch (base/) on the tree of the pull request (pr/): a pull request that
+# edits tools/validator cannot weaken the check of itself. Its own validator code runs only in the separate `tests`
+# job. Both jobs: `pull_request` (not pull_request_target), a read-only token, no secrets, no persisted credentials.
+# With `pull_request` GitHub takes this workflow file from the pull request too, so changes of .github/ itself must be
+# guarded by review (CODEOWNERS / branch protection), not by this workflow. No environment with reviewers here (review
+# F1): the jobs hold no secret and no token that writes, a run started by anybody can do nothing more than read.
+name: validate-pr
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      # trusted code: the validator, its schemas and tools/addons_snapshot of the base branch
+      - name: Checkout the base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.base_ref }}
+          path: base
+          persist-credentials: false
+      # data only: nothing of it is executed. Full history: check-index --base diffs it against origin/<base>
+      - name: Checkout the pull request
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - name: Check the index
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set +e
+          python base/tools/validator/gw_catalog.py --snapshot-tools base/tools/addons_snapshot \
+            check-index pr --base "origin/$BASE_REF" --format md --out "$RUNNER_TEMP/report.md"
+          code=$?
+          cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/report.md"
+          exit $code
+
+  # The tests of the validator of the pull request itself (a pull request may change tools/validator). This is code of
+  # the pull request: its own job, so it cannot touch the base checkout of `check`.
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - name: Tests of the validator
+        if: ${{ hashFiles('tools/validator/tests/*.py') != '' }}
+        run: python -m unittest discover -s tools/validator/tests -v

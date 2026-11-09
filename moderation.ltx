@@ -1,0 +1,22 @@
+; Decisions of the moderators (11-catalog-distribution.md 4.1, 5.2, 5.3). Edited by a pull request; validate-pr.yml
+; checks the file, build-index.yml applies it at its next run.
+
+; An addon taken off the catalog: stays in index.json with status "blocked", installed copies get a warning.
+; id = reason
+[blocked]
+
+; A malicious addon: status "revoked", the launcher turns it off and offers to remove it; the sha256 of all its
+; packages go to revoked_sha256 of index.json.
+[revoked]
+
+; Versions that are not offered for install: id = 1.2.0, 1.2.1
+[yanked]
+
+; Versions that break saves (besides location packs, whose save_compat is compared automatically): id = 1.3.0
+[breaks_saves]
+
+; Codes of the validator accepted for an addon (they become notes): id = namespace_script, lua_dynamic_code
+[exceptions]
+
+; Known malicious packages, applied by the launcher to every source: <sha256> = comment
+[revoked_sha256]

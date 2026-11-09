@@ -1,0 +1,117 @@
+# A new gw_merge with a new version of the parse (algo, 15-merge-implementation.md 7.2): the deltas of the published
+# versions are computed again into files/<id>/<ver>.merge.<algo tag>.json. files/<id>/<ver>.json stays as it is
+# (immutable, 00-roadmap.md 5a decision 50). Run by hand after the engine release that changed the algo: first set
+# vars.GW_MERGE_URL and vars.GW_MERGE_SHA256 to the new gw_merge (there is no input for another binary - review F1).
+#
+# Two jobs, as build-index.yml (review F3): `recompute` reads the packages without any secret and without an
+# environment (an environment that holds the key of the App must not see the code of a package); the hand-over is
+# checked and pushed by `publish`, behind the environment `catalog-admin` (required reviewers: nothing is pushed before
+# they approve; it holds the key of the App).
+name: recompute-deltas
+
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Comma list of addon ids (empty - all)"
+        required: false
+        default: ""
+
+# Its own group, not `build-index`: GitHub keeps one pending run per group and a newer queued run cancels it, so a
+# manual recompute waiting behind a long build-index would be dropped by the next cron build-index.
+# Running beside build-index is safe for the repo: ci/commit.sh pushes without force and on a race rebases and retries;
+# recompute only adds new files/<id>/<ver>.merge.<tag>.json and the "recomputed" lists in state/, so a conflict is
+# possible only in a state/<id>.json that build-index changed meanwhile - then the run fails (nothing is pushed or lost
+# in the repo) and is dispatched again. A second recompute dispatch waits for the first one.
+concurrency:
+  group: recompute-deltas
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  recompute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/gw_snapshots
+          key: snapshots-${{ hashFiles('game_releases.ltx') }}
+          restore-keys: snapshots-
+      - name: gw_merge
+        id: merge
+        env:
+          URL: ${{ vars.GW_MERGE_URL }}
+          SHA256: ${{ vars.GW_MERGE_SHA256 }}
+        run: |
+          path=$(bash ci/fetch_gw_merge.sh "$URL" "$SHA256" "$HOME/gw_merge")
+          if [ -z "$path" ]; then echo "::error::vars.GW_MERGE_URL is not set"; exit 1; fi
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+      - name: Recompute
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ONLY: ${{ inputs.only }}
+          GW_MERGE: ${{ steps.merge.outputs.path }}
+        run: |
+          args=(--index . --snapshots ~/gw_snapshots --gw-merge "$GW_MERGE")
+          if [ -n "$ONLY" ]; then args+=(--only "$ONLY"); fi
+          python tools/validator/gw_catalog.py recompute-deltas "${args[@]}"
+          python tools/validator/gw_catalog.py check-index .
+      - name: Hand over
+        run: |
+          mkdir -p "$RUNNER_TEMP/handover"
+          python tools/validator/gw_catalog.py export-changes --index . --out "$RUNNER_TEMP/handover"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: handover
+          path: ${{ runner.temp }}/handover
+          retention-days: 3
+          if-no-files-found: error
+
+  publish:
+    needs: recompute
+    environment: catalog-admin
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Repo name
+        id: repo
+        run: echo "name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
+      - name: App token (index)
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.CATALOG_APP_ID }}
+          private-key: ${{ secrets.CATALOG_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ steps.repo.outputs.name }}
+          permission-contents: write
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app.outputs.token }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: handover
+          path: ${{ runner.temp }}/handover
+      - name: Apply the hand-over
+        run: |
+          python tools/validator/gw_catalog.py apply-changes --index . --from "$RUNNER_TEMP/handover"
+          python tools/validator/gw_catalog.py check-index .
+      - name: Commit
+        env:
+          BRANCH: ${{ github.ref_name }}
+          BOT_NAME: ${{ vars.CATALOG_BOT_NAME || 'gw-catalog[bot]' }}
+          BOT_EMAIL: ${{ vars.CATALOG_BOT_EMAIL || 'gw-catalog-bot@users.noreply.github.com' }}
+        run: |
+          bash ci/commit.sh "index: recompute deltas $(date -u +%Y-%m-%dT%H:%MZ)" state files

@@ -1,0 +1,8 @@
+# The actions of the workflows are pinned by a commit SHA (review F12: a moved tag of an action would reach the keys of
+# the catalog App); Dependabot proposes the updates as pull requests, a moderator reviews the diff of the action.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

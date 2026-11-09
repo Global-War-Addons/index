@@ -1,0 +1,10 @@
+; Game releases with their dates (15-merge-implementation.md 7.2 step 1): an addon without [addon] game_version gets
+; the delta against the last release on the date of its publication ("guessed": true); the latest release is the base
+; of the rebase check. Every release here needs its snapshot at source.ltx [game] snapshot_url.
+; TODO(developer): fill from the real releases; the release pipeline of the game may append a line.
+; tag = YYYY-MM-DD, <sha256 of base_snapshot.json.gz>, <sha256 of base_texts.tar.gz>
+; (tools/release/make_base_snapshot.py prints the line). With the two sha256 CI uses only these files for the tag: a
+; snapshot uploaded again or an old copy of the CI cache is refused. Without them the snapshot is taken as it is.
+; A new line re-checks the versions that were refused for an unknown game_version.
+
+[releases]

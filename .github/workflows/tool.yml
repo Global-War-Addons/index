@@ -1,0 +1,62 @@
+# gw_addon_tool.pyz - the author tool as one file (decision 63): an author without git downloads
+# https://github.com/<org>/index/releases/latest/download/gw_addon_tool.pyz and runs
+# `python gw_addon_tool.pyz check <addon folder>`. Built by tools/validator/build_pyz.py from the default branch after
+# every change of tools/ or of the files of the index it packs (tags, reserved ids, source, game releases, moderation),
+# and published as a new release of this repo (tag tool-<commit>, marked latest; a published release is never changed,
+# so immutable releases of the organization do not get in the way).
+#
+# Only reviewed code runs here (a push to the default branch: a pull request with the approval of CODEOWNERS); no
+# package of an addon is read. GITHUB_TOKEN with contents: write is needed to create the release.
+name: tool
+
+on:
+  push:
+    paths:
+      - "tools/**"
+      - "source.ltx"
+      - "tags.ltx"
+      - "reserved_ids.ltx"
+      - "moderation.ltx"
+      - "game_releases.ltx"
+      - ".github/workflows/tool.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: tool
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pyz:
+    if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+      - name: Build and smoke-test
+        run: |
+          mkdir -p "$RUNNER_TEMP/dist"
+          python tools/validator/build_pyz.py --out "$RUNNER_TEMP/dist"
+          cd "$RUNNER_TEMP/dist"
+          sha256sum gw_addon_tool.pyz > gw_addon_tool.pyz.sha256
+          GW_ADDON_TOOL_CACHE="$RUNNER_TEMP/cache" python gw_addon_tool.pyz --help > /dev/null
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="tool-${GITHUB_SHA::12}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "$tag is published already"; exit 0
+          fi
+          gh release create "$tag" "$RUNNER_TEMP/dist/gw_addon_tool.pyz" "$RUNNER_TEMP/dist/gw_addon_tool.pyz.sha256" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest --title "gw_addon_tool ${GITHUB_SHA::12}" \
+            --notes "The author tool of the catalog as one file: python gw_addon_tool.pyz check <addon folder> (Python 3.10+; zstd parts need 3.14+). Built from $GITHUB_SHA."

@@ -1,0 +1,30 @@
+; The source (catalog) this index describes: goes into index.json "source" and "templates" (11-catalog-distribution.md
+; 4.3, 7). A third-party catalog made from this repo ("Use this template") changes [source] id / names, [github] org
+; and the templates. Format: the strict ltx of addon.ltx; "//" inside a value (https://) is not a comment here.
+
+[source]
+id       = global-war-addons                   ; a-z 0-9 -, up to 64; global-war-addons is reserved for the official one
+name     = GlobalWar official catalog
+name_ru  = Официальный каталог GlobalWar
+name_en  = GlobalWar official catalog
+homepage = https://github.com/Global-War-Addons
+official = true
+
+[github]
+org        = Global-War-Addons
+index_repo = index
+
+[templates]
+asset   = https://github.com/{repo}/releases/download/{tag}/{name}
+catalog = https://raw.githubusercontent.com/{repo}/{rev}/catalog/{path}
+index   = https://raw.githubusercontent.com/Global-War-Addons/index/HEAD/{path}
+repo    = https://github.com/{repo}
+
+; Mirrors of the asset template (11 R14): one per line, as a key.
+[mirrors]
+
+[game]
+; Where CI takes the snapshots of the base for the delta (15-merge-implementation.md 7.2 step 1): the release pipeline
+; of the game publishes base_snapshot.json.gz and base_texts.tar.gz (tools/addons_snapshot build) as assets of the
+; game release <tag>. {tag} and {name} are replaced. TODO(developer): the real repo of the game releases.
+snapshot_url = https://github.com/Global-War-Addons/game-snapshots/releases/download/{tag}/{name}

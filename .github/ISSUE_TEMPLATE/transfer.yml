@@ -1,0 +1,25 @@
+# "Transfer an addon / take back my mod" (11-catalog-distribution.md 5.3): handled by a moderator by hand.
+name: Transfer an addon / Передать аддон
+description: Change the maintainers of an addon repo / Сменить мейнтейнеров репо аддона
+title: "Transfer: "
+labels: ["transfer"]
+body:
+  - type: input
+    id: addon_id
+    attributes:
+      label: Addon id / id аддона
+    validations:
+      required: true
+  - type: input
+    id: new_maintainers
+    attributes:
+      label: New maintainers (GitHub logins) / новые мейнтейнеры
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: Why / причина
+      description: A link that proves the authorship or the agreement of the current maintainer
+    validations:
+      required: true
