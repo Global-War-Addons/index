@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gw-catalog/version-file.schema.json",
+  "title": "files/<id>/<ver>.json: the files of a published version, the base files it replaces and the reference to its merge delta (immutable)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "version",
+    "tag",
+    "files"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "version": {
+      "$ref": "#/$defs/version"
+    },
+    "tag": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "size"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "merge": {
+      "$ref": "#/$defs/merge_ref"
+    },
+    "replaces": {
+      "$ref": "#/$defs/replaces"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]{1,64}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "algo": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+    },
+    "merge_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "algo",
+        "sha256",
+        "size"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+\\.merge\\.json$"
+        },
+        "algo": {
+          "$ref": "#/$defs/algo"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "replaces": {
+      "description": "The files of the base the package replaces (14-addon-resource-scoping.md A6), by the rules of the engine (addon_content.cpp MountContentFolder, the log line 'replaces N base files', console addon_files): the public files of gamedata/ (and of the [slot.*] sets) whose virtual path the base snapshot of 'game' has; [private] files, '@...' folders and the names the engine skips are not counted. No key - no snapshot of the base was known at the check.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "game",
+        "count",
+        "texts",
+        "files",
+        "truncated"
+      ],
+      "properties": {
+        "game": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+          "description": "the game tag of the base snapshot"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "all the replaced files"
+        },
+        "texts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "of them .ltx/.xml/.script (not mod_*): merged with the base by atoms (the delta, 15 section 7.2), not replaced whole"
+        },
+        "files": {
+          "type": "array",
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "package paths as in 'files' (gamedata/..., slots/<slot>/gamedata/...), sorted, the first 200"
+        },
+        "truncated": {
+          "type": "boolean",
+          "description": "count > the length of files"
+        }
+      }
+    }
+  }
+}

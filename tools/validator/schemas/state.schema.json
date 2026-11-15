@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gw-catalog/state.schema.json",
+  "title": "state/<id>.json: what CI checked, accepted and published (11-catalog-distribution.md 4.1); written only by CI (build-index.yml, review.yml)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "repo",
+    "accepted_caps",
+    "versions"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "repo": {
+      "type": "string"
+    },
+    "accepted_caps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "accepted_type": {
+      "type": "string"
+    },
+    "catalog": {
+      "type": "object"
+    },
+    "catalog_errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "catalog_issue": {
+      "type": "integer"
+    },
+    "history": {
+      "type": "string"
+    },
+    "old_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "file",
+          "replaced_at"
+        ],
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "replaced_at": {
+            "$ref": "#/$defs/datetime"
+          }
+        }
+      }
+    },
+    "versions": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/version"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/state_version"
+      }
+    },
+    "repo_id": {
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "catalog_checked": {
+      "type": "string"
+    },
+    "retry": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/version"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "count",
+          "since",
+          "key"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "since": {
+            "$ref": "#/$defs/datetime"
+          },
+          "last": {
+            "$ref": "#/$defs/datetime"
+          },
+          "key": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "issue": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]{1,64}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "datetime": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "state_version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tag",
+        "status",
+        "checked_at",
+        "pre",
+        "date",
+        "assets"
+      ],
+      "properties": {
+        "tag": {
+          "type": "string"
+        },
+        "release_id": {
+          "type": [
+            "integer",
+            "string"
+          ]
+        },
+        "status": {
+          "enum": [
+            "listed",
+            "pending",
+            "rejected",
+            "invalid",
+            "yanked",
+            "gone"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "checked_at": {
+          "$ref": "#/$defs/datetime"
+        },
+        "pre": {
+          "type": "boolean"
+        },
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "size",
+              "sha256",
+              "id",
+              "updated_at"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "id": {
+                "type": [
+                  "integer",
+                  "string"
+                ]
+              },
+              "updated_at": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "manifest": {
+          "type": "object"
+        },
+        "caps_found": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scanner": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "review": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "issue": {
+          "type": "integer"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "string"
+        },
+        "merge_files": {
+          "type": "integer"
+        },
+        "recomputed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "game": {
+          "type": "string"
+        },
+        "unpacked_size": {
+          "type": "integer"
+        },
+        "exceptions": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

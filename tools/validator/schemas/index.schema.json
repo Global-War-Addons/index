@@ -1,0 +1,484 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gw-catalog/index.schema.json",
+  "title": "index.json, schema 1 (11-catalog-distribution.md 4.3; 15 section 7.2: game, merge_files)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "generated_at",
+    "source",
+    "templates",
+    "mirrors",
+    "revoked_sha256",
+    "addons"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1
+    },
+    "generated_at": {
+      "$ref": "#/$defs/datetime"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "homepage"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{1,64}$"
+        },
+        "name": {
+          "$ref": "#/$defs/langmap"
+        },
+        "homepage": {
+          "type": "string"
+        }
+      }
+    },
+    "templates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset",
+        "catalog",
+        "index",
+        "repo"
+      ],
+      "properties": {
+        "asset": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "catalog": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "index": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "repo": {
+          "type": "string",
+          "pattern": "^https://"
+        }
+      }
+    },
+    "mirrors": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^https://"
+      }
+    },
+    "revoked_sha256": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/sha256"
+      }
+    },
+    "addons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "repo",
+          "type",
+          "status",
+          "name",
+          "summary",
+          "tags",
+          "authors",
+          "maintainers",
+          "license",
+          "links",
+          "rev",
+          "icon",
+          "screenshots",
+          "description",
+          "history",
+          "latest"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "repo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+/[a-z0-9_]+$"
+          },
+          "type": {
+            "enum": [
+              "content",
+              "graphics",
+              "audio",
+              "script",
+              "ui",
+              "localization",
+              "library",
+              "location",
+              "total_conversion"
+            ]
+          },
+          "status": {
+            "enum": [
+              "listed",
+              "blocked",
+              "revoked"
+            ]
+          },
+          "name": {
+            "$ref": "#/$defs/langmap"
+          },
+          "summary": {
+            "$ref": "#/$defs/langmap"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "authors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maintainers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "license": {
+            "type": "string",
+            "minLength": 1
+          },
+          "permission": {
+            "type": "string"
+          },
+          "links": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "homepage",
+              "source",
+              "donate"
+            ],
+            "properties": {
+              "homepage": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "donate": {
+                "type": "string"
+              }
+            }
+          },
+          "rev": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{7,64}$"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "screenshots": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "$ref": "#/$defs/langmap"
+          },
+          "history": {
+            "type": "string",
+            "pattern": "^history/[a-z0-9_]+\\.[0-9a-f]{8}\\.json$"
+          },
+          "latest": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/version_entry"
+            }
+          }
+        }
+      }
+    },
+    "revoked_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/id"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]{1,64}$"
+    },
+    "datetime": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "langmap": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^([a-z]{2,3})?$"
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "api": {
+      "type": "string",
+      "pattern": "^([0-9]+\\.[0-9]+\\.[0-9]+)?$"
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "kind",
+        "size",
+        "sha256"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+-[0-9]+\\.[0-9]+\\.[0-9]+(\\.part[1-9][0-9]*)?\\.zip$"
+        },
+        "kind": {
+          "enum": [
+            "content"
+          ]
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "version_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v",
+        "tag",
+        "date",
+        "pre",
+        "api",
+        "plugin_api",
+        "depends",
+        "conflicts",
+        "load_after",
+        "patches",
+        "caps",
+        "save_compat",
+        "breaks_saves",
+        "size",
+        "assets",
+        "game",
+        "merge_files"
+      ],
+      "properties": {
+        "v": {
+          "$ref": "#/$defs/version"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "pre": {
+          "type": "boolean"
+        },
+        "api": {
+          "$ref": "#/$defs/api"
+        },
+        "plugin_api": {
+          "$ref": "#/$defs/api"
+        },
+        "depends": {
+          "type": "string"
+        },
+        "conflicts": {
+          "type": "string"
+        },
+        "load_after": {
+          "type": "string"
+        },
+        "patches": {
+          "type": "string"
+        },
+        "caps": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "ffi",
+              "fs_write",
+              "os_exec"
+            ]
+          }
+        },
+        "save_compat": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "breaks_saves": {
+          "type": "boolean"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/asset"
+          }
+        },
+        "game": {
+          "type": "string"
+        },
+        "merge_files": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "history_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "v",
+        "tag",
+        "date",
+        "pre",
+        "api",
+        "plugin_api",
+        "depends",
+        "conflicts",
+        "load_after",
+        "patches",
+        "caps",
+        "save_compat",
+        "breaks_saves",
+        "size",
+        "assets",
+        "game",
+        "merge_files",
+        "notes",
+        "yanked"
+      ],
+      "properties": {
+        "v": {
+          "$ref": "#/$defs/version"
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "date": {
+          "$ref": "#/$defs/date"
+        },
+        "pre": {
+          "type": "boolean"
+        },
+        "api": {
+          "$ref": "#/$defs/api"
+        },
+        "plugin_api": {
+          "$ref": "#/$defs/api"
+        },
+        "depends": {
+          "type": "string"
+        },
+        "conflicts": {
+          "type": "string"
+        },
+        "load_after": {
+          "type": "string"
+        },
+        "patches": {
+          "type": "string"
+        },
+        "caps": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "ffi",
+              "fs_write",
+              "os_exec"
+            ]
+          }
+        },
+        "save_compat": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "breaks_saves": {
+          "type": "boolean"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/asset"
+          }
+        },
+        "game": {
+          "type": "string"
+        },
+        "merge_files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "notes": {
+          "type": "string"
+        },
+        "yanked": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

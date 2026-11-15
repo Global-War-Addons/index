@@ -1,0 +1,582 @@
+{
+ "about": [
+  "Release tags of the game: [release] tag of configs/gw_release.ltx, [addon] game_version (15-merge-implementation.md 2.2). '[v|V] N(.N)* [-suffix]': N - ASCII digits up to 4294967295; -patchN (any case) a patch, any other suffix of A-Z a-z 0-9 '.' a pre-release. Engine MergeParseTag / MergeCompareTags / ReleaseTagOlder (xray-16/src/xrGame/addon_merge.cpp), tools/addons_snapshot/gametag.py (the validator imports it).",
+  "parse: expect null - not a tag; numbers without the trailing zeros (1.4.0 == 1.4), kind pre / release / patch, patch - N of -patchN, pre - the pre-release suffix in lower case. The value is not trimmed (the callers trim an ltx value first).",
+  "compare: -1 / 0 / 1 (a older / the same / newer). Same numbers: pre-release < release < -patch0 < -patch1; two pre-releases - the suffixes in lower case compared as byte strings.",
+  "older: [addon] game_version older than the tag of the game (ReleaseTagOlder): empty or equal strings - no; a value that is not a tag - any difference is older."
+ ],
+ "parse": [
+  {
+   "in": "v1.4.0",
+   "expect": {
+    "numbers": [
+     1,
+     4
+    ],
+    "kind": "release",
+    "patch": 0,
+    "pre": ""
+   }
+  },
+  {
+   "in": "V1.4",
+   "expect": {
+    "numbers": [
+     1,
+     4
+    ],
+    "kind": "release",
+    "patch": 0,
+    "pre": ""
+   }
+  },
+  {
+   "in": "1.4.0",
+   "expect": {
+    "numbers": [
+     1,
+     4
+    ],
+    "kind": "release",
+    "patch": 0,
+    "pre": ""
+   }
+  },
+  {
+   "in": "1.4",
+   "expect": {
+    "numbers": [
+     1,
+     4
+    ],
+    "kind": "release",
+    "patch": 0,
+    "pre": ""
+   }
+  },
+  {
+   "in": "0.5.5",
+   "expect": {
+    "numbers": [
+     0,
+     5,
+     5
+    ],
+    "kind": "release",
+    "patch": 0,
+    "pre": ""
+   }
+  },
+  {
+   "in": "0.5.5-Beta",
+   "expect": {
+    "numbers": [
+     0,
+     5,
+     5
+    ],
+    "kind": "pre",
+    "patch": 0,
+    "pre": "beta"
+   }
+  },
+  {
+   "in": "0.5.5-patch1",
+   "expect": {
+    "numbers": [
+     0,
+     5,
+     5
+    ],
+    "kind": "patch",
+    "patch": 1,
+    "pre": ""
+   }
+  },
+  {
+   "in": "0.5.5-PATCH4",
+   "expect": {
+    "numbers": [
+     0,
+     5,
+     5
+    ],
+    "kind": "patch",
+    "patch": 4,
+    "pre": ""
+   }
+  },
+  {
+   "in": "0.5.5-patch04",
+   "expect": {
+    "numbers": [
+     0,
+     5,
+     5
+    ],
+    "kind": "patch",
+    "patch": 4,
+    "pre": ""
+   }
+  },
+  {
+   "in": "0.5.5-Patch0",
+   "expect": {
+    "numbers": [
+     0,
+     5,
+     5
+    ],
+    "kind": "patch",
+    "patch": 0,
+    "pre": ""
+   }
+  },
+  {
+   "in": "0.5.5-patch",
+   "expect": {
+    "numbers": [
+     0,
+     5,
+     5
+    ],
+    "kind": "pre",
+    "patch": 0,
+    "pre": "patch"
+   }
+  },
+  {
+   "in": "0.5.5-patch4b",
+   "expect": {
+    "numbers": [
+     0,
+     5,
+     5
+    ],
+    "kind": "pre",
+    "patch": 0,
+    "pre": "patch4b"
+   }
+  },
+  {
+   "in": "0.5.5-patch4.1",
+   "expect": {
+    "numbers": [
+     0,
+     5,
+     5
+    ],
+    "kind": "pre",
+    "patch": 0,
+    "pre": "patch4.1"
+   }
+  },
+  {
+   "in": "0.5.6-rc.1",
+   "expect": {
+    "numbers": [
+     0,
+     5,
+     6
+    ],
+    "kind": "pre",
+    "patch": 0,
+    "pre": "rc.1"
+   }
+  },
+  {
+   "in": "1-rc.10",
+   "expect": {
+    "numbers": [
+     1
+    ],
+    "kind": "pre",
+    "patch": 0,
+    "pre": "rc.10"
+   }
+  },
+  {
+   "in": "04.0",
+   "expect": {
+    "numbers": [
+     4
+    ],
+    "kind": "release",
+    "patch": 0,
+    "pre": ""
+   }
+  },
+  {
+   "in": "0",
+   "expect": {
+    "numbers": [],
+    "kind": "release",
+    "patch": 0,
+    "pre": ""
+   }
+  },
+  {
+   "in": "v0",
+   "expect": {
+    "numbers": [],
+    "kind": "release",
+    "patch": 0,
+    "pre": ""
+   }
+  },
+  {
+   "in": "1.0.0.0",
+   "expect": {
+    "numbers": [
+     1
+    ],
+    "kind": "release",
+    "patch": 0,
+    "pre": ""
+   }
+  },
+  {
+   "in": "4294967295",
+   "expect": {
+    "numbers": [
+     4294967295
+    ],
+    "kind": "release",
+    "patch": 0,
+    "pre": ""
+   }
+  },
+  {
+   "in": "4294967296",
+   "expect": null
+  },
+  {
+   "in": "1.2-patch4294967295",
+   "expect": {
+    "numbers": [
+     1,
+     2
+    ],
+    "kind": "patch",
+    "patch": 4294967295,
+    "pre": ""
+   }
+  },
+  {
+   "in": "1.2-patch4294967296",
+   "expect": null
+  },
+  {
+   "in": "1.2-a.b.c",
+   "expect": {
+    "numbers": [
+     1,
+     2
+    ],
+    "kind": "pre",
+    "patch": 0,
+    "pre": "a.b.c"
+   }
+  },
+  {
+   "in": "1.2-.",
+   "expect": {
+    "numbers": [
+     1,
+     2
+    ],
+    "kind": "pre",
+    "patch": 0,
+    "pre": "."
+   }
+  },
+  {
+   "in": "",
+   "expect": null
+  },
+  {
+   "in": "v",
+   "expect": null
+  },
+  {
+   "in": "V",
+   "expect": null
+  },
+  {
+   "in": "1.",
+   "expect": null
+  },
+  {
+   "in": "1..2",
+   "expect": null
+  },
+  {
+   "in": ".1",
+   "expect": null
+  },
+  {
+   "in": "1.2-",
+   "expect": null
+  },
+  {
+   "in": "1.2-beta-1",
+   "expect": null
+  },
+  {
+   "in": "1.2-patch-1",
+   "expect": null
+  },
+  {
+   "in": "1.2 beta",
+   "expect": null
+  },
+  {
+   "in": " 1.2",
+   "expect": null
+  },
+  {
+   "in": "1.2 ",
+   "expect": null
+  },
+  {
+   "in": "vv1",
+   "expect": null
+  },
+  {
+   "in": "x1.2",
+   "expect": null
+  },
+  {
+   "in": "-1",
+   "expect": null
+  },
+  {
+   "in": "1.2_beta",
+   "expect": null
+  },
+  {
+   "in": "1.2-beta_1",
+   "expect": null
+  },
+  {
+   "in": "1.2-\u0431\u0435\u0442\u0430",
+   "expect": null
+  },
+  {
+   "in": "\uff11.2",
+   "expect": null
+  },
+  {
+   "in": "1.2+build",
+   "expect": null
+  },
+  {
+   "in": "v1.4.0\n",
+   "expect": null
+  }
+ ],
+ "compare": [
+  {
+   "a": "0.5.5-Beta",
+   "b": "0.5.5",
+   "expect": -1
+  },
+  {
+   "a": "0.5.5",
+   "b": "0.5.5-patch1",
+   "expect": -1
+  },
+  {
+   "a": "0.5.5-patch1",
+   "b": "0.5.5-patch4",
+   "expect": -1
+  },
+  {
+   "a": "0.5.5-patch4",
+   "b": "0.5.6-Beta",
+   "expect": -1
+  },
+  {
+   "a": "0.5.6-Beta",
+   "b": "v0.5.6",
+   "expect": -1
+  },
+  {
+   "a": "v1.4",
+   "b": "1.4.0",
+   "expect": 0
+  },
+  {
+   "a": "V1.4.0",
+   "b": "v1.4",
+   "expect": 0
+  },
+  {
+   "a": "1.4.0-patch0",
+   "b": "1.4.0",
+   "expect": 1
+  },
+  {
+   "a": "1.4-rc.10",
+   "b": "1.4-rc.2",
+   "expect": -1
+  },
+  {
+   "a": "1.4-Beta",
+   "b": "1.4-beta",
+   "expect": 0
+  },
+  {
+   "a": "1.4-alpha",
+   "b": "1.4-beta",
+   "expect": -1
+  },
+  {
+   "a": "1.10",
+   "b": "1.9",
+   "expect": 1
+  },
+  {
+   "a": "04.0",
+   "b": "4",
+   "expect": 0
+  },
+  {
+   "a": "1.2-patch10",
+   "b": "1.2-patch9",
+   "expect": 1
+  },
+  {
+   "a": "1.2-patch04",
+   "b": "1.2-patch4",
+   "expect": 0
+  },
+  {
+   "a": "1.0.0.1",
+   "b": "1",
+   "expect": 1
+  },
+  {
+   "a": "1.2-patch",
+   "b": "1.2",
+   "expect": -1
+  },
+  {
+   "a": "1.2-patch4b",
+   "b": "1.2",
+   "expect": -1
+  },
+  {
+   "a": "1.2-zzz",
+   "b": "1.2-patch0",
+   "expect": -1
+  },
+  {
+   "a": "2",
+   "b": "1.999-patch5",
+   "expect": 1
+  },
+  {
+   "a": "0",
+   "b": "v0.0.0",
+   "expect": 0
+  },
+  {
+   "a": "4294967295",
+   "b": "4294967294.9",
+   "expect": 1
+  },
+  {
+   "a": "1.4-B",
+   "b": "1.4-a",
+   "expect": 1
+  }
+ ],
+ "older": [
+  {
+   "game_version": "",
+   "tag": "v1.4.0",
+   "expect": false
+  },
+  {
+   "game_version": "v1.4.0",
+   "tag": "",
+   "expect": false
+  },
+  {
+   "game_version": "",
+   "tag": "",
+   "expect": false
+  },
+  {
+   "game_version": "v1.4.0",
+   "tag": "v1.4.0",
+   "expect": false
+  },
+  {
+   "game_version": "1.4",
+   "tag": "v1.4.0",
+   "expect": false
+  },
+  {
+   "game_version": "v1.3.9",
+   "tag": "v1.4.0",
+   "expect": true
+  },
+  {
+   "game_version": "v1.4.0-patch1",
+   "tag": "v1.4.0",
+   "expect": false
+  },
+  {
+   "game_version": "v1.4.0",
+   "tag": "v1.4.0-patch1",
+   "expect": true
+  },
+  {
+   "game_version": "beta",
+   "tag": "v1.4.0",
+   "expect": true
+  },
+  {
+   "game_version": "v1.4.0",
+   "tag": "beta",
+   "expect": true
+  },
+  {
+   "game_version": "beta",
+   "tag": "beta",
+   "expect": false
+  },
+  {
+   "game_version": "beta",
+   "tag": "Beta",
+   "expect": true
+  },
+  {
+   "game_version": "v1.5",
+   "tag": "v1.4.0",
+   "expect": false
+  },
+  {
+   "game_version": "V1.4.0",
+   "tag": "v1.4.0",
+   "expect": false
+  },
+  {
+   "game_version": "1.4.0-Beta",
+   "tag": "1.4.0",
+   "expect": true
+  },
+  {
+   "game_version": "1.4.0-beta",
+   "tag": "1.4.0-Beta",
+   "expect": false
+  },
+  {
+   "game_version": " v1.4.0",
+   "tag": "v1.4.0",
+   "expect": true
+  }
+ ]
+}

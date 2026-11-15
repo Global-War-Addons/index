@@ -1,0 +1,827 @@
+{
+ "about": [
+  "appdata/addons.ltx as the engine reads it: ParseSimpleIni (merge_repeated = false) + ReadLauncherList (xray-16/src/xrGame/addon_host.cpp); launcher addon_slots.rs check_addons_ltx (syntax), addons_ltx.rs has_no_section, read_list. The input: 'text' (UTF-8) or 'hex' (raw bytes).",
+  "readable: ok; syntax - a syntax error of the strict reader; no_section - no section at all (0 bytes, blanks, comments, a BOM: a write cut short). Both: the engine ignores the file and loads no plugin.",
+  "is_list: the file has [addons] or an [addon.<...>] section (any name after the prefix). Without it the addon folders are scanned as without the file.",
+  "entries: the [addon.<id>] sections with a valid id (a-z 0-9 _, up to 64), in the order of the file, a repeated one ignored. path - the first non-empty value of path (comment, blanks, one pair of quotes cut; '' - not given); path_utf8 false - the value is not valid UTF-8 (the engine fails the addon, A5), no path then. enabled - the first non-empty value of enabled is true / on / yes (any case) or 1; no value - true."
+ ],
+ "cases": [
+  {
+   "name": "launcher_list",
+   "text": "[addons]\nformat = 1\n\n[addon.my_addon]\nenabled = true\ntrust = index\ncatalog = global-war-addons\n\n[addon.gw_npc]\npath = addons\\gw_npc\nenabled = false\ntrust = first_party\nplugin_sha256 = abababababababababababababababababababababababababababababababab\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "my_addon",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     },
+     {
+      "id": "gw_npc",
+      "path": "addons\\gw_npc",
+      "path_utf8": true,
+      "enabled": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "crlf_bom",
+   "text": "\ufeff[addons]\r\nformat = 1\r\n[addon.a]\r\npath = addons\\x\r\ntrust = first_party\r\nplugin_sha256 = ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB\r\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "addons\\x",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "no_final_newline",
+   "text": "[addon.a]\npath = x",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "x",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "dup_section",
+   "text": "[addons]\n[addon.a]\nenabled = false\n[addon.a]\nenabled = true\npath = y\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "",
+      "path_utf8": true,
+      "enabled": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "empty_value_then_value",
+   "text": "[addon.a]\npath =\npath = z\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "z",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "quoted",
+   "text": "[addon.a]\npath = \"C:\\Games\\GW addons\\a\"\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "C:\\Games\\GW addons\\a",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "quoted_semicolon",
+   "text": "[addon.a]\npath = \"C:\\a;b\"\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "\"C:\\a",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "quote_single",
+   "text": "[addon.a]\npath = \"\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "\"",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "quotes_inner",
+   "text": "[addon.a]\npath = \"a\"b\"\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "a\"b",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "slashes_cut",
+   "text": "[addon.a]\npath = D:/x//y\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "D:/x",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "hash_in_value",
+   "text": "[addon.a]\npath = a#b\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "a#b",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "upper_section",
+   "text": "[ADDON.My_Addon]\nENABLED = No\nTrust = INDEX\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "my_addon",
+      "path": "",
+      "path_utf8": true,
+      "enabled": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "upper_key",
+   "text": "[addon.a]\nPATH = P\nEnabled = 0\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "P",
+      "path_utf8": true,
+      "enabled": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "invalid_id",
+   "text": "[addon.my-addon]\n[addon.a]\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "long_id",
+   "text": "[addon.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": []
+   }
+  },
+  {
+   "name": "id_64",
+   "text": "[addon.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "empty_id",
+   "text": "[addon.]\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": []
+   }
+  },
+  {
+   "name": "unknown_section_only",
+   "text": "[something]\nx = 1\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": false,
+    "entries": []
+   }
+  },
+  {
+   "name": "addons_only",
+   "text": "[addons]\nformat = 1\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": []
+   }
+  },
+  {
+   "name": "only_slots",
+   "text": "[slots]\nworld = x\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": false,
+    "entries": []
+   }
+  },
+  {
+   "name": "only_conflicts",
+   "text": "[conflicts]\npair:a = b\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": false,
+    "entries": []
+   }
+  },
+  {
+   "name": "addon_prefix_only",
+   "text": "[addonx]\n[addon]\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": false,
+    "entries": []
+   }
+  },
+  {
+   "name": "empty_file",
+   "text": "",
+   "expect": {
+    "readable": "no_section"
+   }
+  },
+  {
+   "name": "only_comment",
+   "text": "; nothing\n// nothing\n",
+   "expect": {
+    "readable": "no_section"
+   }
+  },
+  {
+   "name": "only_blanks",
+   "text": " \t\r\n\n",
+   "expect": {
+    "readable": "no_section"
+   }
+  },
+  {
+   "name": "only_bom",
+   "text": "\ufeff",
+   "expect": {
+    "readable": "no_section"
+   }
+  },
+  {
+   "name": "bom_then_comment",
+   "text": "\ufeff; c\r\n",
+   "expect": {
+    "readable": "no_section"
+   }
+  },
+  {
+   "name": "hash_line",
+   "text": "[addons]\n# comment\n",
+   "expect": {
+    "readable": "syntax"
+   }
+  },
+  {
+   "name": "include",
+   "text": "#include \"x.ltx\"\n[addons]\n",
+   "expect": {
+    "readable": "syntax"
+   }
+  },
+  {
+   "name": "bom_mid",
+   "text": "[addons]\n\ufeff[addon.a]\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": []
+   }
+  },
+  {
+   "name": "bom_twice",
+   "text": "\ufeff\ufeff[addons]\n",
+   "expect": {
+    "readable": "syntax"
+   }
+  },
+  {
+   "name": "nbsp_after_header",
+   "text": "[addon.a]\u00a0\n",
+   "expect": {
+    "readable": "syntax"
+   }
+  },
+  {
+   "name": "nbsp_key",
+   "text": "[addons]\n\u00a0 = 1\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": []
+   }
+  },
+  {
+   "name": "utf8_path",
+   "text": "[addon.a]\npath = D:\\\u0418\u0433\u0440\u044b\\\u0430\u0434\u0434\u043e\u043d\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "D:\\\u0418\u0433\u0440\u044b\\\u0430\u0434\u0434\u043e\u043d",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "key_no_eq",
+   "text": "[addon.a]\nenabled\npath\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "eq_empty_key",
+   "text": "[addon.a]\n= 1\n",
+   "expect": {
+    "readable": "syntax"
+   }
+  },
+  {
+   "name": "header_trailing_comment",
+   "text": "[addon.a] ; c\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "header_trailing_slashes",
+   "text": "[addon.a]// c\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "header_inherit",
+   "text": "[addon.a]:base\n",
+   "expect": {
+    "readable": "syntax"
+   }
+  },
+  {
+   "name": "header_space_inside",
+   "text": "[ addon.a ]\npath = p\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "p",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "empty_section",
+   "text": "[ ]\n",
+   "expect": {
+    "readable": "syntax"
+   }
+  },
+  {
+   "name": "no_close",
+   "text": "[addon.a\n",
+   "expect": {
+    "readable": "syntax"
+   }
+  },
+  {
+   "name": "close_in_comment",
+   "text": "[addon.a ; ]\n",
+   "expect": {
+    "readable": "syntax"
+   }
+  },
+  {
+   "name": "value_outside",
+   "text": "x = 1\n[addons]\n",
+   "expect": {
+    "readable": "syntax"
+   }
+  },
+  {
+   "name": "tab_trim",
+   "text": "\t[addon.a]\t\n\tpath\t=\t\"q\"\t\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "q",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "ff_key",
+   "text": "[addons]\n\f = 1\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": []
+   }
+  },
+  {
+   "name": "vt_line",
+   "text": "[addons]\n\u000b\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": []
+   }
+  },
+  {
+   "name": "nul_in_value",
+   "text": "[addon.a]\npath = a\u0000b\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "a\u0000b",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "cr_only_lines",
+   "text": "[addons]\rformat = 1\r[addon.a]\r",
+   "expect": {
+    "readable": "syntax"
+   }
+  },
+  {
+   "name": "enabled_values",
+   "text": "[addon.a]\nenabled = 0\n[addon.b]\nenabled = TRUE\n[addon.c]\nenabled = no\n[addon.d]\nenabled = 2\n[addon.e]\nenabled = On\n[addon.f]\nenabled = yes\n[addon.g]\nenabled =\n[addon.h]\nenabled = off\n[addon.i]\nenabled = \"false\"\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "",
+      "path_utf8": true,
+      "enabled": false
+     },
+     {
+      "id": "b",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     },
+     {
+      "id": "c",
+      "path": "",
+      "path_utf8": true,
+      "enabled": false
+     },
+     {
+      "id": "d",
+      "path": "",
+      "path_utf8": true,
+      "enabled": false
+     },
+     {
+      "id": "e",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     },
+     {
+      "id": "f",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     },
+     {
+      "id": "g",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     },
+     {
+      "id": "h",
+      "path": "",
+      "path_utf8": true,
+      "enabled": false
+     },
+     {
+      "id": "i",
+      "path": "",
+      "path_utf8": true,
+      "enabled": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "enabled_first_nonempty",
+   "text": "[addon.a]\nenabled =\nenabled = false\nenabled = true\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "",
+      "path_utf8": true,
+      "enabled": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "slots_repeated_addons",
+   "text": "[addons]\n[slots]\n[addons]\nformat = 2\n[addon.a]\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "format_unknown",
+   "text": "[addons]\nformat = 7\n[addon.a]\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "order",
+   "text": "[addon.c]\n[addon.a]\n[addon.b]\n",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "c",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     },
+     {
+      "id": "a",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     },
+     {
+      "id": "b",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "cp1251_path",
+   "hex": "5b6164646f6e2e615d0a70617468203d20c4eeec0a",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path_utf8": false,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "cp1251_comment",
+   "hex": "5b6164646f6e2e615d0a70617468203d2070203b20c4eeec0a",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "p",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "bad_utf8_other_key",
+   "hex": "5b6164646f6e2e615d0a6e616d65203d20ff0a70617468203d206f6b0a",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path": "ok",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "bad_utf8_first_empty_path",
+   "hex": "5b6164646f6e2e615d0a70617468203d0a70617468203d20e080800a",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path_utf8": false,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "overlong_utf8_path",
+   "hex": "5b6164646f6e2e615d0a70617468203d20c0af0a",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path_utf8": false,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "surrogate_utf8_path",
+   "hex": "5b6164646f6e2e615d0a70617468203d20eda0800a",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "a",
+      "path_utf8": false,
+      "enabled": true
+     }
+    ]
+   }
+  },
+  {
+   "name": "bad_byte_in_section",
+   "hex": "5b6164646f6e2eff5d0a5b6164646f6e2e625d0a",
+   "expect": {
+    "readable": "ok",
+    "is_list": true,
+    "entries": [
+     {
+      "id": "b",
+      "path": "",
+      "path_utf8": true,
+      "enabled": true
+     }
+    ]
+   }
+  }
+ ]
+}

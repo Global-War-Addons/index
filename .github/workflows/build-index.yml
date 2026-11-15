@@ -90,18 +90,32 @@ jobs:
           path: ~/gw_http_cache
           key: http-${{ steps.http.outputs.hour }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: http-${{ steps.http.outputs.hour }}-
-      # gw_merge for Linux (xray-16/src/utils/gw_merge): the delta is made only by it (15 section 7.1). vars.GW_MERGE_URL
-      # - a tar.gz / binary built by the CI of the engine, used only with the sha256 of vars.GW_MERGE_SHA256 (review F4).
-      # Without it a version that replaces text files of the base waits (merge_plan_unavailable: the validator has no
-      # Python fallback of the merge rules, decision 64 item 4).
+      # gw_merge for Linux (xray-16/src/utils/gw_merge): the delta is made only by it (15 section 7.1). By default the
+      # asset gw_merge-linux-x86_64.tar.gz of the latest release of the engine, checked with the sha256 of its
+      # neighbour <asset>.sha256 of the same release (decision of the developer 2026-11-14). Optional overrides:
+      # vars.GW_MERGE_URL (a pinned tag), vars.GW_MERGE_SHA256 (the hash set by hand). No gw_merge (no release with the
+      # asset or its .sha256, a wrong hash, a download failure) does not stop the run: fetch_gw_merge.sh writes an
+      # ::error::, the run goes on without gw_merge and only a version that replaces text files of the base waits
+      # (merge_plan_unavailable, a retry: the validator has no Python fallback of the merge rules, decision 64 item 4);
+      # every other addon is published as usual.
       - name: gw_merge
         id: merge
         env:
           URL: ${{ vars.GW_MERGE_URL }}
           SHA256: ${{ vars.GW_MERGE_SHA256 }}
         run: |
-          path=$(bash ci/fetch_gw_merge.sh "$URL" "$SHA256" "$HOME/gw_merge")
+          if ! path=$(bash ci/fetch_gw_merge.sh "$URL" "$SHA256" "$HOME/gw_merge"); then
+            echo "::warning::gw_merge is not used in this run: versions that replace texts of the base wait (retry)"
+            path=""
+          fi
           echo "path=$path" >> "$GITHUB_OUTPUT"
+      # The algo of the deltas may change with a new release of the engine: gw_merge version (algorithm, revision,
+      # delta_format) and its source go to the log and the Summary; published versions without a delta of this
+      # algorithm are a warning (recompute-deltas.yml makes them)
+      - name: gw_merge version
+        env:
+          GW_MERGE: ${{ steps.merge.outputs.path }}
+        run: python ci/gw_merge_info.py "$GW_MERGE" --index . --warn-stale
       - name: Build the index
         env:
           GITHUB_TOKEN: ${{ steps.reader.outputs.token || github.token }}
