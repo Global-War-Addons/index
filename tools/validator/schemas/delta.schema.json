@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gw-catalog/delta.schema.json",
+  "title": "files/<id>/<ver>.merge[.<algo tag>].json: the merge delta S9 (15-merge-implementation.md 7.2). The format is owned by gw_merge (ContentMerge DeltaJson); only its frame is checked here",
+  "type": "object",
+  "required": [
+    "format",
+    "algo",
+    "game",
+    "files"
+  ],
+  "properties": {
+    "format": {
+      "type": "integer",
+      "const": 1
+    },
+    "algo": {
+      "$ref": "#/$defs/algo"
+    },
+    "game": {
+      "type": "string"
+    },
+    "guessed": {
+      "type": "boolean"
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "ancestor_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "addon_sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "atoms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "atom",
+                "op"
+              ],
+              "properties": {
+                "atom": {
+                  "type": "string"
+                },
+                "op": {
+                  "enum": [
+                    "add",
+                    "modify",
+                    "delete"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "algo": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"
+    }
+  }
+}

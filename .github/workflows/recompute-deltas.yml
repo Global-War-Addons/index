@@ -1,7 +1,9 @@
 # A new gw_merge with a new version of the parse (algo, 15-merge-implementation.md 7.2): the deltas of the published
 # versions are computed again into files/<id>/<ver>.merge.<algo tag>.json. files/<id>/<ver>.json stays as it is
-# (immutable, 00-roadmap.md 5a decision 50). Run by hand after the engine release that changed the algo: first set
-# vars.GW_MERGE_URL and vars.GW_MERGE_SHA256 to the new gw_merge (there is no input for another binary - review F1).
+# (immutable, 00-roadmap.md 5a decision 50). Run by hand after the engine release that changed the algo (build-index
+# shows the algorithm of its gw_merge in the Summary and warns about versions without a delta of it): gw_merge is the
+# one of the latest release of the engine, or of vars.GW_MERGE_URL when it is pinned (there is no input for another
+# binary - review F1). Deltas of an older algo for new versions: pin vars.GW_MERGE_URL to the older tag and run this.
 #
 # Two jobs, as build-index.yml (review F3): `recompute` reads the packages without any secret and without an
 # environment (an environment that holds the key of the App must not see the code of a package); the hand-over is
@@ -46,6 +48,8 @@ jobs:
           path: ~/gw_snapshots
           key: snapshots-${{ hashFiles('game_releases.ltx') }}
           restore-keys: snapshots-
+      # The same gw_merge as build-index (fetch_gw_merge.sh: the latest release of the engine or vars.GW_MERGE_URL,
+      # the sha256 of <asset>.sha256 or vars.GW_MERGE_SHA256); here it is required - no gw_merge fails the run
       - name: gw_merge
         id: merge
         env:
@@ -53,8 +57,12 @@ jobs:
           SHA256: ${{ vars.GW_MERGE_SHA256 }}
         run: |
           path=$(bash ci/fetch_gw_merge.sh "$URL" "$SHA256" "$HOME/gw_merge")
-          if [ -z "$path" ]; then echo "::error::vars.GW_MERGE_URL is not set"; exit 1; fi
           echo "path=$path" >> "$GITHUB_OUTPUT"
+      # gw_merge version (algorithm, revision, delta_format), its source and the versions this run will recompute
+      - name: gw_merge version
+        env:
+          GW_MERGE: ${{ steps.merge.outputs.path }}
+        run: python ci/gw_merge_info.py "$GW_MERGE" --index .
       - name: Recompute
         env:
           GITHUB_TOKEN: ${{ github.token }}

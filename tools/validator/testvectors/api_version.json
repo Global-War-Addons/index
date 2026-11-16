@@ -1,0 +1,323 @@
+{
+ "about": [
+  "[addon] api_min / [plugin] api_min of addon.ltx (11-catalog-distribution.md 6).",
+  "parse: 'in' is the value as the ini reader gives it (' ', TAB, CR, LF around it already trimmed; an empty value 'api_min =' is no key for the readers and never reaches the parser - it is here for the parser alone).",
+  "value: the lenient reader - MAJOR, MAJOR.MINOR or MAJOR.MINOR.PATCH, up to 9 decimal digits each, the missing parts 0, MAJOR and MINOR <= 1023, PATCH <= 4095; null - an error of the manifest. Engine ParseVersion (xray-16/src/xrGame/addon_host.cpp), launcher addon_catalog.rs parse_api.",
+  "strict: the catalog form - exactly MAJOR.MINOR.PATCH in the same limits (the engine reads the others with a warning). Engine ParseVersion + ParseAddonVersion, validator gwcat/ltx.py parse_api_version, launcher addon_author.rs parse_api_version.",
+  "compat: api_min against the API version of the engine - unset (0.0.0: no requirement), ok, newer_game (needs a newer game), addon_update (made for an older major). Engine ApiMinFit + ApiMinAdvice, launcher addon_catalog.rs api_compat."
+ ],
+ "parse": [
+  {
+   "in": "0.1.0",
+   "value": "0.1.0",
+   "strict": true
+  },
+  {
+   "in": "1.2.3",
+   "value": "1.2.3",
+   "strict": true
+  },
+  {
+   "in": "0.0.0",
+   "value": "0.0.0",
+   "strict": true
+  },
+  {
+   "in": "1023.1023.4095",
+   "value": "1023.1023.4095",
+   "strict": true
+  },
+  {
+   "in": "000000001.0.0",
+   "value": "1.0.0",
+   "strict": true
+  },
+  {
+   "in": "00.01.000",
+   "value": "0.1.0",
+   "strict": true
+  },
+  {
+   "in": "1",
+   "value": "1.0.0",
+   "strict": false
+  },
+  {
+   "in": "1.2",
+   "value": "1.2.0",
+   "strict": false
+  },
+  {
+   "in": "0.1",
+   "value": "0.1.0",
+   "strict": false
+  },
+  {
+   "in": "0",
+   "value": "0.0.0",
+   "strict": false
+  },
+  {
+   "in": "1024.0.0",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "0.1024.0",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "0.0.4096",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "1000000000.0.0",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "0.1.0000000001",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "4294967297.0.0",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "1.2x",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "0.2x",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "1..2",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "1.",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": ".1",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "+0.1.0",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "-1",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "0x2",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "1 2",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "1.2.3.",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "1.2.3.4",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "v0.1.0",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "V1",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "0.1.0beta",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "0.1.0-rc1",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "0.1.-0",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "1,2,3",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": ".",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "\uff11.2.3",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "\u00a00.1.0",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "0.1.0\u00a0",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "\u000b0.1.0",
+   "value": null,
+   "strict": false
+  },
+  {
+   "in": "0.1.0\f",
+   "value": null,
+   "strict": false
+  }
+ ],
+ "compat": [
+  {
+   "engine": "0.1.0",
+   "api_min": "0.0.0",
+   "expect": "unset"
+  },
+  {
+   "engine": "0.1.0",
+   "api_min": "0.1.0",
+   "expect": "ok"
+  },
+  {
+   "engine": "0.1.0",
+   "api_min": "0.0.5",
+   "expect": "addon_update"
+  },
+  {
+   "engine": "0.1.0",
+   "api_min": "0.1.1",
+   "expect": "newer_game"
+  },
+  {
+   "engine": "0.1.0",
+   "api_min": "0.2.0",
+   "expect": "newer_game"
+  },
+  {
+   "engine": "0.1.0",
+   "api_min": "1.0.0",
+   "expect": "newer_game"
+  },
+  {
+   "engine": "0.2.3",
+   "api_min": "0.2.0",
+   "expect": "ok"
+  },
+  {
+   "engine": "0.2.3",
+   "api_min": "0.2.3",
+   "expect": "ok"
+  },
+  {
+   "engine": "0.2.3",
+   "api_min": "0.2.4",
+   "expect": "newer_game"
+  },
+  {
+   "engine": "0.2.3",
+   "api_min": "0.1.0",
+   "expect": "addon_update"
+  },
+  {
+   "engine": "0.2.3",
+   "api_min": "0.1.9",
+   "expect": "addon_update"
+  },
+  {
+   "engine": "1.4.0",
+   "api_min": "1.0.0",
+   "expect": "ok"
+  },
+  {
+   "engine": "1.4.0",
+   "api_min": "1.4.0",
+   "expect": "ok"
+  },
+  {
+   "engine": "1.4.0",
+   "api_min": "1.4.1",
+   "expect": "newer_game"
+  },
+  {
+   "engine": "1.4.0",
+   "api_min": "1.5.0",
+   "expect": "newer_game"
+  },
+  {
+   "engine": "1.4.0",
+   "api_min": "0.9.0",
+   "expect": "addon_update"
+  },
+  {
+   "engine": "1.4.0",
+   "api_min": "2.0.0",
+   "expect": "newer_game"
+  },
+  {
+   "engine": "2.0.0",
+   "api_min": "1.9.9",
+   "expect": "addon_update"
+  },
+  {
+   "engine": "1.4.0",
+   "api_min": "1",
+   "expect": "ok"
+  },
+  {
+   "engine": "1.4.0",
+   "api_min": "1.4",
+   "expect": "ok"
+  },
+  {
+   "engine": "0.1.0",
+   "api_min": "0.1",
+   "expect": "ok"
+  },
+  {
+   "engine": "0.1.0",
+   "api_min": "0",
+   "expect": "unset"
+  }
+ ]
+}
